@@ -1,0 +1,50 @@
+version: '3.9'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    hostname: rabbitmq
+    container_name: rabbitmq_management
+    ports: 
+    - 5672:5672
+    - 15672:15672 # communication with the web management API 
+    volumes:
+    # data persistence
+    - /docker_conf/rabbitmq/data/:/var/lib/rabbitmq/
+    restart: always
+    networks:
+      - dev
+  consumer:
+    build:
+      context: ..
+      dockerfile: ./cmd/consumer/Dockerfile
+    networks:
+      - dev
+    environment:
+      - RABBITMQ_ADDRESS=rabbitmq:5672
+      - RABBITMQ_USERNAME=guest
+      - RABBITMQ_PASSWORD=guest
+    depends_on:
+      - rabbitmq
+      - producer
+    deploy:
+      mode: replicated
+      replicas: 1
+  producer:
+    container_name: producer
+    build:
+      context: ..
+      dockerfile: ./cmd/producer/Dockerfile
+    networks:
+      - dev
+    ports:
+      - 3000:3000
+    depends_on:
+      - rabbitmq
+    environment:
+      - RABBITMQ_ADDRESS=rabbitmq:5672
+      - RABBITMQ_USERNAME=guest
+      - RABBITMQ_PASSWORD=guest
+networks:
+  dev:
+    driver: bridge
